@@ -1,0 +1,26 @@
+{
+  "name": "gamevault-topup-marketplace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Mobile-responsive gaming top-up marketplace with Supabase integration.",
+  "scripts": {
+    "dev": "vite",
+    "start": "npx serve .",
+    "build": "echo 'No build step required for ESM-native project'"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.48.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.23",
+    "lucide-react": "^0.462.0",
+    "postcss": "^8.5.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-router": "^7.1.0",
+    "react-router-dom": "^7.13.0",
+    "tailwindcss": "^4.1.18"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

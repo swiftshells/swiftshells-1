@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SwiftShells Topup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      window.process = { env: { NODE_ENV: "production" } };
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Poppins", "sans-serif"],
+            },
+            animation: {
+              marquee: "marquee 20s linear infinite",
+            },
+            keyframes: {
+              marquee: {
+                "0%": { transform: "translateX(100%)" },
+                "100%": { transform: "translateX(-150%)" },
+              },
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap");
+      body {
+        font-family: "Poppins", sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      .dark ::-webkit-scrollbar-track {
+        background: #1e293b;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #ff8c00;
+        border-radius: 10px;
+      }
+    </style>
+    <script type="importmap">
+      {
+        "imports": {
+          "lucide-react": "https://esm.sh/lucide-react@^0.462.0",
+          "react-dom": "https://esm.sh/react-dom@^19.0.0",
+          "react-dom/": "https://esm.sh/react-dom@^19.0.0/",
+          "react-router-dom": "https://esm.sh/react-router-dom@^6.28.0",
+          "react/": "https://esm.sh/react@^19.0.0/",
+          "react": "https://esm.sh/react@^19.0.0",
+          "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.48.0",
+          "react-router": "https://esm.sh/react-router@^7.13.0"
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="/index.css" />
+  </head>
+  <body class="bg-gray-50 dark:bg-slate-950">
+    <div id="root"></div>
+    <script type="module" src="index.tsx"></script>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
