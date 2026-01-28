@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "start": "npx serve .",
-    "build": "echo 'No build step required for ESM-native project'"
+    "build": "vite build"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.48.0",
