@@ -108,7 +108,7 @@ export const Login: React.FC = () => {
             />
           </div>
           <h1 className="text-4xl font-black leading-none mb-2">
-            <span className="text-[#2c3e50] dark:text-white">MANGO</span>
+            <span className="text-[#2c3e50] dark:text-white">SwiftShells</span>
             <span className="text-[#ff8c00]">TOPUP</span>
           </h1>
           <p className="text-gray-400 dark:text-slate-500 text-sm font-medium uppercase tracking-widest">
