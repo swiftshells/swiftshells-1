@@ -38,6 +38,9 @@ export const Login: React.FC = () => {
 
   const handleGoogleLogin = async () => {
     setLoading(true);
+    // Track intent: User intends to LOGIN, not create an account
+    sessionStorage.setItem("auth_intent", "login");
+
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -105,7 +108,7 @@ export const Login: React.FC = () => {
             />
           </div>
           <h1 className="text-4xl font-black leading-none mb-2">
-            <span className="text-[#2c3e50] dark:text-white">Swiftshells</span>
+            <span className="text-[#2c3e50] dark:text-white">MANGO</span>
             <span className="text-[#ff8c00]">TOPUP</span>
           </h1>
           <p className="text-gray-400 dark:text-slate-500 text-sm font-medium uppercase tracking-widest">

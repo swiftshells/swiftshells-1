@@ -1,19 +1,26 @@
-import React, { createContext, useContext, useState, ReactNode, useEffect, useCallback } from 'react';
-import { User, Order, Product, Transaction } from '../types.ts';
-import { supabase } from '../lib/supabase.ts';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  ReactNode,
+  useEffect,
+  useCallback,
+} from "react";
+import { User, Order, Product, Transaction } from "../types.ts";
+import { supabase } from "../lib/supabase.ts";
 
 export interface AppNotification {
   id: string;
-  type: 'success' | 'error' | 'info';
+  type: "success" | "error" | "info";
   message: string;
 }
 
 interface PlaceOrderResponse {
   success: boolean;
-  error?: 'insufficient_balance' | 'database_error' | 'auth_error' | string;
+  error?: "insufficient_balance" | "database_error" | "auth_error" | string;
 }
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = "light" | "dark" | "system";
 
 interface AppContextType {
   user: User | null;
@@ -24,13 +31,26 @@ interface AppContextType {
   isAdmin: boolean;
   login: () => void;
   logout: () => void;
-  addMoney: (amount: number) => Promise<{success: boolean, message?: string}>;
-  verifyTransaction: (amount: number, trxId: string, method: string) => Promise<{success: boolean, message: string}>;
-  placeOrder: (product: Product, playerId: string) => Promise<PlaceOrderResponse>;
+  addMoney: (amount: number) => Promise<{ success: boolean; message?: string }>;
+  verifyTransaction: (
+    amount: number,
+    trxId: string,
+    method: string,
+  ) => Promise<{ success: boolean; message: string }>;
+  placeOrder: (
+    product: Product,
+    playerId: string,
+  ) => Promise<PlaceOrderResponse>;
   cancelOrder: (orderId: string) => Promise<boolean>;
-  adminManageOrder: (orderId: string, action: 'confirm' | 'cancel') => Promise<boolean>;
+  adminManageOrder: (
+    orderId: string,
+    action: "confirm" | "cancel",
+  ) => Promise<boolean>;
   notifications: AppNotification[];
-  addNotification: (message: string, type?: 'success' | 'error' | 'info') => void;
+  addNotification: (
+    message: string,
+    type?: "success" | "error" | "info",
+  ) => void;
   dismissNotification: (id: string) => void;
   isSyncing: boolean;
   theme: Theme;
@@ -42,7 +62,9 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export const AppProvider: React.FC<{ children: ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -50,107 +72,128 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  
+
   const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('theme') as Theme) || 'system';
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("theme") as Theme) || "system";
     }
-    return 'system';
+    return "system";
   });
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem('theme', newTheme);
+    localStorage.setItem("theme", newTheme);
   };
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
-    if (theme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    root.classList.remove("light", "dark");
+    if (theme === "system") {
+      const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+        .matches
+        ? "dark"
+        : "light";
       root.classList.add(systemTheme);
     } else {
       root.classList.add(theme);
     }
   }, [theme]);
 
-  const addNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'success') => {
-    const id = Math.random().toString(36).substring(2, 11);
-    setNotifications(prev => [...prev, { id, type, message }]);
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 5000);
-  }, []);
+  const addNotification = useCallback(
+    (message: string, type: "success" | "error" | "info" = "success") => {
+      const id = Math.random().toString(36).substring(2, 11);
+      setNotifications((prev) => [...prev, { id, type, message }]);
+      setTimeout(() => {
+        setNotifications((prev) => prev.filter((n) => n.id !== id));
+      }, 5000);
+    },
+    [],
+  );
 
   const dismissNotification = useCallback((id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
   const fetchUserData = useCallback(async (email: string, uid: string) => {
     setIsSyncing(true);
     try {
-      let { data: profile } = await supabase.from('profiles').select('*').eq('id', uid).maybeSingle();
-      
+      let { data: profile } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", uid)
+        .maybeSingle();
+
       if (profile) {
         setUser({
           id: profile.id,
-          name: profile.full_name || profile.name || email.split('@')[0],
+          name: profile.full_name || profile.name || email.split("@")[0],
           email: profile.email,
-          phone: profile.phone || '',
+          phone: profile.phone || "",
           balance: parseFloat(profile.balance || 0),
-          supportPin: profile.support_pin || '0000',
+          supportPin: profile.support_pin || "0000",
           isVerified: profile.is_verified ?? false,
-          role: profile.role || 'user'
+          role: profile.role || "user",
         });
       } else {
         setUser({
           id: uid,
-          name: email.split('@')[0],
+          name: email.split("@")[0],
           email: email,
-          phone: '',
+          phone: "",
           balance: 0,
-          supportPin: '0000',
+          supportPin: "0000",
           isVerified: false,
-          role: 'user'
+          role: "user",
         });
       }
 
       // Fetch personal orders
-      const { data: userOrders } = await supabase.from('orders').select('*')
-        .eq('email', email) // Explicitly filter by email for normal user view
-        .order('created_at', { ascending: false });
-        
+      const { data: userOrders } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("email", email) // Explicitly filter by email for normal user view
+        .order("created_at", { ascending: false });
+
       if (userOrders) {
-        setOrders(userOrders.map((o: any) => ({
-          id: o.id.toString(),
-          productName: o["product name"] || o.product_name,
-          amount: parseFloat(o.amount || 0),
-          date: o.date || new Date(o.created_at).toLocaleDateString(),
-          status: o.status || 'Processing',
-          playerId: o.player_id,
-          email: o.email
-        })));
+        setOrders(
+          userOrders.map((o: any) => ({
+            id: o.id.toString(),
+            productName: o["product name"] || o.product_name,
+            amount: parseFloat(o.amount || 0),
+            date: o.date || new Date(o.created_at).toLocaleDateString(),
+            status: o.status || "Processing",
+            playerId: o.player_id,
+            email: o.email,
+          })),
+        );
       }
 
-      const { data: userTx } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+      const { data: userTx } = await supabase
+        .from("transactions")
+        .select("*")
+        .order("created_at", { ascending: false });
       if (userTx) {
-        setTransactions(userTx.map((t: any) => ({
-          id: t.id.toString(),
-          type: t.type,
-          amount: parseFloat(t.amount),
-          date: new Date(t.created_at).toLocaleString(),
-          description: t.description || ''
-        })));
+        setTransactions(
+          userTx.map((t: any) => ({
+            id: t.id.toString(),
+            type: t.type,
+            amount: parseFloat(t.amount),
+            date: new Date(t.created_at).toLocaleString(),
+            description: t.description || "",
+          })),
+        );
       }
     } catch (err) {
       console.error("Fetch error:", err);
     } finally {
       setIsSyncing(false);
     }
-  }, []); 
+  }, []);
 
   const refreshUserData = useCallback(async () => {
-    const { data: { session } } = await supabase.auth.getSession();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
     if (session?.user) {
       await fetchUserData(session.user.email!, session.user.id);
     }
@@ -158,12 +201,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   useEffect(() => {
     let mounted = true;
-    
+
     // Safety timeout to prevent infinite loading state
     const timeoutId = setTimeout(() => {
       if (mounted) {
-        setIsAuthReady(current => {
-          if (!current) console.warn("Auth initialization timed out, forcing ready state");
+        setIsAuthReady((current) => {
+          if (!current)
+            console.warn("Auth initialization timed out, forcing ready state");
           return true;
         });
       }
@@ -171,7 +215,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const initAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
         if (mounted && session?.user) {
           setIsLoggedIn(true);
           await fetchUserData(session.user.email!, session.user.id);
@@ -185,10 +231,35 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      
+
       if (session?.user) {
+        // --- STRICTURE CHECK FOR LOGIN PAGE VS REGISTER PAGE INTENT ---
+        const intent = sessionStorage.getItem("auth_intent");
+
+        // If user came from Login page AND the account was just created (< 60 seconds ago)
+        if (intent === "login") {
+          const createdAt = new Date(session.user.created_at).getTime();
+          const now = Date.now();
+          // Allow a 60 second window for OAuth redirect/creation process
+          if (now - createdAt < 60000) {
+            await supabase.auth.signOut();
+            addNotification(
+              "Account not found. Please create an account in Sign Up page.",
+              "error",
+            );
+            sessionStorage.removeItem("auth_intent");
+            return;
+          }
+        }
+
+        // Cleanup intent
+        sessionStorage.removeItem("auth_intent");
+        // -------------------------------------------------------------
+
         setIsLoggedIn(true);
         // Do not await here to avoid blocking the auth state change
         fetchUserData(session.user.email!, session.user.id);
@@ -208,50 +279,61 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     };
   }, [fetchUserData]);
 
-  const verifyTransaction = async (amount: number, trxId: string, method: string) => {
-    if (!user) return { success: false, message: 'Auth error' };
-    
+  const verifyTransaction = async (
+    amount: number,
+    trxId: string,
+    method: string,
+  ) => {
+    if (!user) return { success: false, message: "Auth error" };
+
     try {
-      const { data, error } = await supabase.rpc('verify_deposit_atomic', {
+      const { data, error } = await supabase.rpc("verify_deposit_atomic", {
         p_amount: amount,
         p_trx_id: trxId,
-        p_method: method
+        p_method: method,
       });
 
       if (error) {
         console.error("RPC Error:", error);
         throw error;
       }
-      
+
       if (data.success) {
         await refreshUserData();
         addNotification(`৳${amount} added successfully!`, "success");
-        return { success: true, message: 'Verification successful' };
+        return { success: true, message: "Verification successful" };
       } else {
-        const msg = data.error === 'duplicate_trx_id' ? 'This Transaction ID has already been used.' : 'Failed to verify transaction.';
+        const msg =
+          data.error === "duplicate_trx_id"
+            ? "This Transaction ID has already been used."
+            : "Failed to verify transaction.";
         return { success: false, message: msg };
       }
     } catch (err: any) {
-      return { success: false, message: err.message || 'Database error' };
+      return { success: false, message: err.message || "Database error" };
     }
   };
 
   const addMoney = async (amount: number) => {
-    const dummyTrx = 'INST-' + Math.random().toString(36).substring(2, 10).toUpperCase();
-    return await verifyTransaction(amount, dummyTrx, 'Instant Payment');
+    const dummyTrx =
+      "INST-" + Math.random().toString(36).substring(2, 10).toUpperCase();
+    return await verifyTransaction(amount, dummyTrx, "Instant Payment");
   };
 
-  const placeOrder = async (product: Product, playerId: string): Promise<PlaceOrderResponse> => {
+  const placeOrder = async (
+    product: Product,
+    playerId: string,
+  ): Promise<PlaceOrderResponse> => {
     if (!user) {
       addNotification("Please login to place an order.", "error");
-      return { success: false, error: 'auth_error' };
+      return { success: false, error: "auth_error" };
     }
-    
+
     try {
-      const { data, error } = await supabase.rpc('place_order_atomic', {
+      const { data, error } = await supabase.rpc("place_order_atomic", {
         p_product_name: product.name,
         p_amount: product.price,
-        p_player_id: playerId
+        p_player_id: playerId,
       });
 
       if (error) {
@@ -264,8 +346,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         addNotification(`Order for ${product.name} placed!`, "success");
         return { success: true };
       } else {
-        if (data.error === 'insufficient_balance') {
-          addNotification("Insufficient balance! Please refill your wallet.", "error");
+        if (data.error === "insufficient_balance") {
+          addNotification(
+            "Insufficient balance! Please refill your wallet.",
+            "error",
+          );
         } else {
           addNotification("Order failed: " + data.error, "error");
         }
@@ -273,39 +358,44 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
     } catch (err: any) {
       addNotification("Failed to place order. Try again later.", "error");
-      return { success: false, error: err.message || 'database_error' };
+      return { success: false, error: err.message || "database_error" };
     }
   };
 
   const cancelOrder = async (orderId: string): Promise<boolean> => {
     try {
-      const { data: success } = await supabase.rpc('cancel_my_order', { order_id_param: parseInt(orderId) });
+      const { data: success } = await supabase.rpc("cancel_my_order", {
+        order_id_param: parseInt(orderId),
+      });
       if (success) {
         await refreshUserData();
         addNotification("Order cancelled and refunded.", "success");
         return true;
       }
       return false;
-    } catch (err) { 
-      return false; 
+    } catch (err) {
+      return false;
     }
   };
 
   // Admin function to fetch all orders
   const fetchAllOrders = async (): Promise<Order[]> => {
-    if (user?.role !== 'admin') return [];
-    
-    const { data: allOrders } = await supabase.from('orders').select('*').order('created_at', { ascending: false });
-    
+    if (user?.role !== "admin") return [];
+
+    const { data: allOrders } = await supabase
+      .from("orders")
+      .select("*")
+      .order("created_at", { ascending: false });
+
     if (allOrders) {
       return allOrders.map((o: any) => ({
         id: o.id.toString(),
         productName: o["product name"] || o.product_name,
         amount: parseFloat(o.amount || 0),
         date: o.date || new Date(o.created_at).toLocaleDateString(),
-        status: o.status || 'Processing',
+        status: o.status || "Processing",
         playerId: o.player_id,
-        email: o.email
+        email: o.email,
       }));
     }
     return [];
@@ -313,11 +403,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Admin function to fetch all transactions (with simple join simulation)
   const fetchAllTransactions = async (): Promise<Transaction[]> => {
-    if (user?.role !== 'admin') return [];
+    if (user?.role !== "admin") return [];
 
     try {
       // 1. Fetch transactions
-      const { data: txs, error } = await supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(100);
+      const { data: txs, error } = await supabase
+        .from("transactions")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100);
       if (error) throw error;
       if (!txs || txs.length === 0) return [];
 
@@ -325,7 +419,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const userIds = Array.from(new Set(txs.map((t: any) => t.user_id)));
 
       // 3. Fetch profiles for those IDs
-      const { data: profiles, error: pError } = await supabase.from('profiles').select('id, email').in('id', userIds);
+      const { data: profiles, error: pError } = await supabase
+        .from("profiles")
+        .select("id, email")
+        .in("id", userIds);
       if (pError) throw pError;
 
       // 4. Map profiles to a dictionary for fast lookup
@@ -340,11 +437,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         type: t.type,
         amount: parseFloat(t.amount),
         date: new Date(t.created_at).toLocaleString(),
-        description: t.description || '',
+        description: t.description || "",
         trxId: t.trx_id,
-        userEmail: profileMap[t.user_id] || 'Unknown'
+        userEmail: profileMap[t.user_id] || "Unknown",
       }));
-
     } catch (err) {
       console.error("Admin Fetch TX Error", err);
       return [];
@@ -352,13 +448,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Admin function to confirm or cancel
-  const adminManageOrder = async (orderId: string, action: 'confirm' | 'cancel'): Promise<boolean> => {
+  const adminManageOrder = async (
+    orderId: string,
+    action: "confirm" | "cancel",
+  ): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.rpc('admin_manage_order', { 
-        p_order_id: parseInt(orderId), 
-        p_action: action 
+      const { data, error } = await supabase.rpc("admin_manage_order", {
+        p_order_id: parseInt(orderId),
+        p_action: action,
       });
-      
+
       if (error) throw error;
 
       if (data.success) {
@@ -375,16 +474,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   return (
-    <AppContext.Provider value={{ 
-      user, orders, transactions, isLoggedIn, isAuthReady,
-      isAdmin: user?.role === 'admin',
-      login: () => setIsLoggedIn(true), 
-      logout: async () => { await supabase.auth.signOut(); }, 
-      addMoney, verifyTransaction, placeOrder, cancelOrder, 
-      notifications, addNotification, dismissNotification,
-      isSyncing, theme, setTheme, refreshUserData,
-      fetchAllOrders, fetchAllTransactions, adminManageOrder
-    }}>
+    <AppContext.Provider
+      value={{
+        user,
+        orders,
+        transactions,
+        isLoggedIn,
+        isAuthReady,
+        isAdmin: user?.role === "admin",
+        login: () => setIsLoggedIn(true),
+        logout: async () => {
+          await supabase.auth.signOut();
+        },
+        addMoney,
+        verifyTransaction,
+        placeOrder,
+        cancelOrder,
+        notifications,
+        addNotification,
+        dismissNotification,
+        isSyncing,
+        theme,
+        setTheme,
+        refreshUserData,
+        fetchAllOrders,
+        fetchAllTransactions,
+        adminManageOrder,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
