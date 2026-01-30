@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { GlassCard } from "../components/GlassCard.tsx";
 import {
   Mail,
@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   AlertCircle,
   Inbox,
+  RefreshCw,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.ts";
@@ -26,6 +27,17 @@ export const Register: React.FC = () => {
     phone: "",
     password: "",
   });
+
+  // Resend Logic
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
 
   const handleGoogleLogin = async () => {
     setLoading(true);
@@ -54,6 +66,29 @@ export const Register: React.FC = () => {
     }
   };
 
+  const handleResendEmail = async () => {
+    if (resendCooldown > 0) return;
+
+    setResending(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: "signup",
+        email: formData.email,
+        options: {
+          emailRedirectTo: window.location.origin + "/login",
+        },
+      });
+
+      if (error) throw error;
+      addNotification("Verification email resent!", "success");
+      setResendCooldown(60);
+    } catch (err: any) {
+      addNotification(err.message || "Failed to resend email", "error");
+    } finally {
+      setResending(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -67,6 +102,7 @@ export const Register: React.FC = () => {
         email: cleanEmail,
         password: formData.password,
         options: {
+          emailRedirectTo: window.location.origin + "/login",
           data: {
             full_name: cleanName,
             phone: formData.phone,
@@ -115,6 +151,22 @@ export const Register: React.FC = () => {
               . Please verify your email to activate your account.
             </p>
           </div>
+
+          <button
+            onClick={handleResendEmail}
+            disabled={resendCooldown > 0 || resending}
+            className="text-xs font-bold text-[#ff8c00] hover:text-[#e67e00] flex items-center justify-center gap-2 w-full py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {resending ? (
+              <Loader2 className="animate-spin" size={14} />
+            ) : (
+              <RefreshCw size={14} />
+            )}
+            {resendCooldown > 0
+              ? `Resend available in ${resendCooldown}s`
+              : "Resend Confirmation Email"}
+          </button>
+
           <div className="pt-4 space-y-3">
             <Link
               to="/login"
