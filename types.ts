@@ -1,3 +1,7 @@
+export interface ProductPackage {
+  amount: string;
+  price: number;
+}
 
 export interface Product {
   id: string;
@@ -6,6 +10,12 @@ export interface Product {
   image: string;
   category: string;
   tag?: string;
+  // Extended properties for TopupPage logic
+  packages?: ProductPackage[];
+  inputLabel?: string;
+  inputPlaceholder?: string;
+  hasQuantity?: boolean;
+  rules?: string[];
 }
 
 export interface Order {
@@ -13,14 +23,14 @@ export interface Order {
   productName: string;
   amount: number;
   date: string;
-  status: 'Pending' | 'Completed' | 'Processing' | 'Cancelled';
+  status: "Pending" | "Completed" | "Processing" | "Cancelled";
   playerId?: string;
   email?: string; // Added for admin view
 }
 
 export interface Transaction {
   id: string;
-  type: 'Deposit' | 'Refund' | 'Purchase';
+  type: "Deposit" | "Refund" | "Purchase";
   amount: number;
   date: string;
   description: string;
@@ -29,12 +39,12 @@ export interface Transaction {
 }
 
 export interface User {
-  id: string; 
+  id: string;
   name: string;
   email: string;
   phone: string;
   balance: number;
   supportPin: string;
   isVerified: boolean;
-  role: 'user' | 'admin';
+  role: "user" | "admin";
 }

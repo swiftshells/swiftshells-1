@@ -8,6 +8,7 @@ import React, {
 } from "react";
 import { User, Order, Product, Transaction } from "../types.ts";
 import { supabase } from "../lib/supabase.ts";
+import { INITIAL_PRODUCTS } from "../lib/constants.ts";
 
 export interface AppNotification {
   id: string;
@@ -26,6 +27,7 @@ interface AppContextType {
   user: User | null;
   orders: Order[];
   transactions: Transaction[];
+  products: Product[];
   isLoggedIn: boolean;
   isAuthReady: boolean;
   isAdmin: boolean;
@@ -58,6 +60,10 @@ interface AppContextType {
   refreshUserData: () => Promise<void>;
   fetchAllOrders: () => Promise<Order[]>; // Admin function
   fetchAllTransactions: () => Promise<Transaction[]>; // Admin function
+  updateProductImage: (
+    productId: string,
+    file: File,
+  ) => Promise<{ success: boolean; message?: string }>; // Admin function
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -68,6 +74,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -98,6 +105,39 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
       root.classList.add(theme);
     }
   }, [theme]);
+
+  // Fetch Products from DB and Merge with Initial Data
+  const fetchProducts = useCallback(async () => {
+    try {
+      const { data: dbProducts, error } = await supabase
+        .from("products")
+        .select("*");
+      if (error) {
+        console.error("Error fetching products:", error);
+        return;
+      }
+
+      if (dbProducts && dbProducts.length > 0) {
+        const merged = INITIAL_PRODUCTS.map((p) => {
+          const dbP = dbProducts.find((dp: any) => dp.id === p.id);
+          if (dbP) {
+            // Prioritize DB image, fall back to initial otherwise
+            return { ...p, ...dbP, image: dbP.image || p.image };
+          }
+          return p;
+        });
+        setProducts(merged);
+      } else {
+        setProducts(INITIAL_PRODUCTS);
+      }
+    } catch (err) {
+      console.error("Fetch products exception:", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
   const addNotification = useCallback(
     (message: string, type: "success" | "error" | "info" = "success") => {
@@ -151,7 +191,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
       const { data: userOrders } = await supabase
         .from("orders")
         .select("*")
-        .eq("email", email) // Explicitly filter by email for normal user view
+        .eq("email", email)
         .order("created_at", { ascending: false });
 
       if (userOrders) {
@@ -237,14 +277,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
       if (!mounted) return;
 
       if (session?.user) {
-        // --- STRICTURE CHECK FOR LOGIN PAGE VS REGISTER PAGE INTENT ---
         const intent = sessionStorage.getItem("auth_intent");
-
-        // If user came from Login page AND the account was just created (< 60 seconds ago)
         if (intent === "login") {
           const createdAt = new Date(session.user.created_at).getTime();
           const now = Date.now();
-          // Allow a 60 second window for OAuth redirect/creation process
           if (now - createdAt < 60000) {
             await supabase.auth.signOut();
             addNotification(
@@ -256,12 +292,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
           }
         }
 
-        // Cleanup intent
         sessionStorage.removeItem("auth_intent");
-        // -------------------------------------------------------------
-
         setIsLoggedIn(true);
-        // Do not await here to avoid blocking the auth state change
         fetchUserData(session.user.email!, session.user.id);
       } else {
         setIsLoggedIn(false);
@@ -406,7 +438,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
     if (user?.role !== "admin") return [];
 
     try {
-      // 1. Fetch transactions
       const { data: txs, error } = await supabase
         .from("transactions")
         .select("*")
@@ -415,23 +446,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
       if (error) throw error;
       if (!txs || txs.length === 0) return [];
 
-      // 2. Extract unique user IDs
       const userIds = Array.from(new Set(txs.map((t: any) => t.user_id)));
-
-      // 3. Fetch profiles for those IDs
       const { data: profiles, error: pError } = await supabase
         .from("profiles")
         .select("id, email")
         .in("id", userIds);
       if (pError) throw pError;
 
-      // 4. Map profiles to a dictionary for fast lookup
       const profileMap: Record<string, string> = {};
       profiles?.forEach((p: any) => {
         profileMap[p.id] = p.email;
       });
 
-      // 5. Merge data
       return txs.map((t: any) => ({
         id: t.id.toString(),
         type: t.type,
@@ -473,12 +499,58 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
     }
   };
 
+  // Admin function to update product image
+  const updateProductImage = async (
+    productId: string,
+    file: File,
+  ): Promise<{ success: boolean; message?: string }> => {
+    if (user?.role !== "admin")
+      return { success: false, message: "Unauthorized" };
+
+    try {
+      // 1. Upload to Storage
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${productId}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("product-images")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      // 2. Get Public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("product-images").getPublicUrl(filePath);
+
+      // 3. Upsert Product Record
+      const initialProduct = INITIAL_PRODUCTS.find((p) => p.id === productId);
+      const { error: dbError } = await supabase.from("products").upsert({
+        id: productId,
+        name: initialProduct?.name || "Unknown",
+        category: initialProduct?.category || "General",
+        image: publicUrl,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (dbError) throw dbError;
+
+      await fetchProducts(); // Refresh local state
+      return { success: true };
+    } catch (error: any) {
+      console.error("Update Image Error:", error);
+      return { success: false, message: error.message };
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
         user,
         orders,
         transactions,
+        products,
         isLoggedIn,
         isAuthReady,
         isAdmin: user?.role === "admin",
@@ -500,6 +572,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({
         fetchAllOrders,
         fetchAllTransactions,
         adminManageOrder,
+        updateProductImage,
       }}
     >
       {children}

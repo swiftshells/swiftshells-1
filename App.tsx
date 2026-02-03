@@ -262,7 +262,7 @@ const AppContent: React.FC = () => {
               <div>
                 <h1 className="text-lg font-black tracking-tight leading-none">
                   <span className="text-[#2c3e50] dark:text-slate-100">
-                    SwiftShells
+                    Swiftshells
                   </span>
                   <span className="text-[#ff8c00]">TOPUP</span>
                 </h1>
